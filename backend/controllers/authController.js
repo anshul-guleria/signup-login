@@ -106,3 +106,71 @@ export const logged_out =  async(req,res) => {
         return res.json({success: false, message: error.message});
     }
 }
+
+export const sendVerifyOtp = async(req, res) => {
+    try {
+        const {userId}=req.body;
+
+        const user=await userModel.findById(userId);
+
+        if(user.isAccountVerified) {
+            return res.json({succes: false, message: "Account already verified"})
+        }
+
+        const otp = String(Math.floor(100000 + Math.random()*900000));
+
+        user.verifyOtp=otp;
+        user.verifyOtpExpireAt = Date.now() + 24*60*60*1000;
+
+        await user.save();
+
+        const mailOptions= {
+            from: process.env.SENDER_EMAIL,
+            to: user.email,
+            subject: 'Account Verification OTP',
+            text: `Your otp is ${otp}. Verify your account using this otp`
+        }
+
+        await transporter.sendMail(mailOptions);
+
+        return res.json({success: true, message: "OTP sent successfully."})
+    }
+    catch(error) {
+        res.json({success: false, message: error.message});
+    }
+}
+
+export const verifyEmail = async(req, res) => {
+    const {userId, otp}=req.body;
+
+    if(!userId || !otp) {
+        return res.json({success: false, message:'missing details'});
+    }   
+
+    try {
+        const user=await userModel.findById(userId);
+
+        if(!user) {
+            return res.json({success: false, message:"User not found"});
+        }
+        
+        if(user.verifyOtp==='' || user.verifyOtp!==otp) {
+            return res.json({success: false, message: 'Invalid OTP'})
+        }
+
+        if(user.verifyOtpExpireAt < Date.now()) {
+            return res.json({success:false, message:"OTP expired"});
+        }
+
+        user.isAccountVerified=true;
+        user.verifyOtp='';
+        user.verifyOtpExpireAt=0;
+
+        user.save();
+
+        return res.json({success: true, message: "Email verified successfully"});
+    }
+    catch(error) {
+        return res.json({success: false, message: error.message});
+    }
+}
