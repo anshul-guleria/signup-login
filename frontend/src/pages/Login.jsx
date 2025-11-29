@@ -13,12 +13,13 @@ const Login = () => {
     const [name, setName]=useState('');
     const [email, setEmail]=useState('');
     const [password, setPassword]=useState('');
-
+    
     const onSubmitHandler = async(e) => {
         try {
             e.preventDefault();
             
             axios.defaults.withCredentials=true
+
             if(state==='Sign Up') {
                 const {data}=await axios.post(backendURL+'/api/auth/register', {name, email, password})
 
@@ -37,6 +38,7 @@ const Login = () => {
 
                 if(data.success) {
                     setIsLoggedIn(true);
+                    getUserData()
                     toast.success(data.message);
                     navigate('/')
                 }
